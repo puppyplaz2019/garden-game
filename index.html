@@ -5,20 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sanco's Zen Garden</title>
     <style>
-        body { margin: 0; background: #87CEEB; color: #333; font-family: 'Courier New', monospace; overflow: hidden; touch-action: none; }
+        body { margin: 0; background: #000; color: #333; font-family: 'Courier New', monospace; overflow: hidden; touch-action: none; }
         canvas { display: block; position: absolute; top: 0; left: 0; }
         
         #ui { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; z-index: 10; }
-        .stats { background: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 20px; border: 2px solid #55acee; display: inline-block; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .stats { background: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 20px; border: 2px solid #55acee; display: inline-block; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: 0.5s; }
+        .night-ui { background: rgba(20, 20, 40, 0.9); color: #fff; border-color: #5d5dff; }
         
         #menu { position: absolute; bottom: 110px; width: 100%; text-align: center; z-index: 10; display: flex; justify-content: center; gap: 10px; }
         .menu-item { background: white; border: 2px solid #55acee; padding: 10px 15px; border-radius: 12px; cursor: pointer; transition: 0.2s; font-weight: bold; font-size: 14px; }
         .menu-item span { display: block; font-size: 10px; color: #555; margin-top: 4px; }
         .menu-item.active { background: #55acee; color: white; transform: scale(1.1); border-color: #fff; }
-        .menu-item.active span { color: #fff; }
+        .night-item { background: #1a1a2e; color: #fff; border-color: #333; }
+        .night-item span { color: #aaa; }
 
         #controls { position: absolute; bottom: 30px; width: 100%; text-align: center; display: flex; justify-content: center; gap: 15px; z-index: 10; }
-        
         .btn { border: none; padding: 15px 25px; border-radius: 30px; cursor: pointer; font-weight: bold; font-family: 'Courier New'; transition: 0.3s; pointer-events: auto; }
         #plant-btn { background: #4CAF50; color: white; box-shadow: 0 4px #2e7d32; min-width: 220px; }
         #plant-btn:disabled { background: #ccc; box-shadow: 0 4px #999; opacity: 0.7; }
@@ -32,7 +33,7 @@
 <a href="https://puppyplaz2019.github.io/Arcade-HUB/" id="back-btn">← EXIT</a>
 
 <div id="ui">
-    <div class="stats">
+    <div class="stats" id="stat-bar">
         NOTES: <span id="note-count">0</span> ♪ | ITEMS: <span id="item-count">0</span>
     </div>
 </div>
@@ -64,6 +65,7 @@ let notes = parseInt(localStorage.getItem('notes_collected') || 0);
 let gardenItems = JSON.parse(localStorage.getItem('zen_garden_items') || '[]');
 let currentSelection = 'flower';
 let currentPrice = 50;
+let time = 0; // Goes from 0 to 1
 
 function selectItem(type, price) {
     currentSelection = type;
@@ -79,6 +81,17 @@ function updateUI() {
     const btn = document.getElementById('plant-btn');
     btn.innerText = `PLANT ${currentSelection.toUpperCase()} (${currentPrice} ♪)`;
     btn.disabled = (notes < currentPrice);
+    
+    // Toggle UI Styles
+    const bar = document.getElementById('stat-bar');
+    const items = document.querySelectorAll('.menu-item');
+    if (time > 0.5) {
+        bar.classList.add('night-ui');
+        items.forEach(i => i.classList.add('night-item'));
+    } else {
+        bar.classList.remove('night-ui');
+        items.forEach(i => i.classList.remove('night-item'));
+    }
 }
 
 function plantItem() {
@@ -88,56 +101,61 @@ function plantItem() {
         const hillHeight = Math.sin((xPos / canvas.width) * Math.PI) * 100;
         const yBase = canvas.height - 40 - hillHeight;
 
-        const newItem = {
+        gardenItems.push({
             type: currentSelection,
-            x: xPos,
-            y: yBase,
-            size: 0,
+            x: xPos, y: yBase, size: 0,
             maxSize: currentSelection === 'tree' ? 50 + Math.random()*30 : 15 + Math.random()*15,
             color: currentSelection === 'flower' ? `hsl(${Math.random() * 360}, 85%, 65%)` : (currentSelection === 'tree' ? '#2ecc71' : '#95a5a6'),
             phase: Math.random() * Math.PI * 2,
             trunkHeight: currentSelection === 'tree' ? 80 + Math.random()*60 : 20
-        };
-        gardenItems.push(newItem);
-        save();
-        updateUI();
+        });
+        save(); updateUI();
     }
 }
 
-function resetGarden() {
-    if (confirm("Reset garden?")) {
-        gardenItems = [];
-        localStorage.removeItem('zen_garden_items');
-        updateUI();
-    }
-}
-
-function save() {
-    localStorage.setItem('notes_collected', notes);
-    localStorage.setItem('zen_garden_items', JSON.stringify(gardenItems));
-}
+function resetGarden() { if (confirm("Reset garden?")) { gardenItems = []; localStorage.removeItem('zen_garden_items'); updateUI(); } }
+function save() { localStorage.setItem('notes_collected', notes); localStorage.setItem('zen_garden_items', JSON.stringify(gardenItems)); }
 
 function draw() {
+    // Cycle Time (Slowly loops from 0 to 1 every ~2 minutes)
+    time = (Math.sin(Date.now() * 0.0001) + 1) / 2; 
+
+    // 1. Sky Color Transition
+    const daySky = ['#55acee', '#ffffff'];
+    const nightSky = ['#0a0a2e', '#1a1a40'];
     const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    skyGrad.addColorStop(0, '#55acee');
-    skyGrad.addColorStop(1, '#ffffff');
+    
+    const r1 = Math.floor(85 + (10 - 85) * time);
+    const g1 = Math.floor(172 + (10 - 172) * time);
+    const b1 = Math.floor(238 + (46 - 238) * time);
+    skyGrad.addColorStop(0, `rgb(${r1},${g1},${b1})`);
+    skyGrad.addColorStop(1, time > 0.5 ? '#1a1a40' : '#ffffff');
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = "#4CAF50";
-    ctx.beginPath();
-    ctx.moveTo(0, canvas.height);
-    ctx.quadraticCurveTo(canvas.width/2, canvas.height - 250, canvas.width, canvas.height);
-    ctx.lineTo(canvas.width, canvas.height);
-    ctx.lineTo(0, canvas.height);
-    ctx.fill();
+    // 2. Celestial Body (Sun/Moon)
+    const cx = canvas.width/2 + Math.cos(Date.now()*0.0001) * (canvas.width/3);
+    const cy = canvas.height/3 + Math.sin(Date.now()*0.0001) * 100;
+    ctx.fillStyle = time < 0.5 ? "#FFD700" : "#EEE";
+    ctx.shadowBlur = 20; ctx.shadowColor = ctx.fillStyle;
+    ctx.beginPath(); ctx.arc(cx, cy, 30, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
 
+    // 3. Grass Hill (Darkens at night)
+    ctx.fillStyle = time > 0.5 ? "#1b4d1b" : "#4CAF50";
+    ctx.beginPath(); ctx.moveTo(0, canvas.height);
+    ctx.quadraticCurveTo(canvas.width/2, canvas.height - 250, canvas.width, canvas.height);
+    ctx.lineTo(canvas.width, canvas.height); ctx.lineTo(0, canvas.height); ctx.fill();
+
+    // 4. Garden Items
     gardenItems.forEach(f => {
         if (f.size < f.maxSize) f.size += 0.2;
         const sway = f.type === 'rock' ? 0 : Math.sin(Date.now() * 0.0012 + f.phase) * (f.type === 'tree' ? 20 : 8);
 
+        if (time > 0.6) { ctx.shadowBlur = 10; ctx.shadowColor = f.color; } else { ctx.shadowBlur = 0; }
+
         if (f.type === 'flower') {
-            ctx.strokeStyle = "#2e7d32"; ctx.lineWidth = 3;
+            ctx.strokeStyle = time > 0.5 ? "#143a18" : "#2e7d32"; ctx.lineWidth = 3;
             ctx.beginPath(); ctx.moveTo(f.x, f.y + 20); ctx.quadraticCurveTo(f.x + sway/2, f.y + 10, f.x + sway, f.y); ctx.stroke();
             ctx.fillStyle = f.color;
             for(let i=0; i<6; i++) {
@@ -147,42 +165,27 @@ function draw() {
             ctx.fillStyle = "#FFD700"; ctx.beginPath(); ctx.arc(f.x+sway, f.y, f.size/2.5, 0, Math.PI*2); ctx.fill();
         } 
         else if (f.type === 'tree') {
-            // Taller Slender Trunk
-            ctx.fillStyle = "#5d4037";
+            ctx.fillStyle = time > 0.5 ? "#3e2723" : "#5d4037";
             const currentTrunkH = (f.size / f.maxSize) * f.trunkHeight;
-            ctx.beginPath();
-            ctx.moveTo(f.x - 4, f.y + 20);
-            ctx.lineTo(f.x + sway - 2, f.y - currentTrunkH);
-            ctx.lineTo(f.x + sway + 2, f.y - currentTrunkH);
-            ctx.lineTo(f.x + 4, f.y + 20);
-            ctx.fill();
-
-            // Large Canopy
+            ctx.beginPath(); ctx.moveTo(f.x - 4, f.y + 20); ctx.lineTo(f.x + sway - 2, f.y - currentTrunkH); ctx.lineTo(f.x + sway + 2, f.y - currentTrunkH); ctx.lineTo(f.x + 4, f.y + 20); ctx.fill();
             ctx.fillStyle = f.color;
             const leafyY = f.y - currentTrunkH;
-            ctx.beginPath();
-            ctx.arc(f.x + sway, leafyY, f.size, 0, Math.PI*2);
+            ctx.beginPath(); ctx.arc(f.x + sway, leafyY, f.size, 0, Math.PI*2);
             ctx.arc(f.x + sway - f.size/1.5, leafyY - f.size/2, f.size*0.7, 0, Math.PI*2);
-            ctx.arc(f.x + sway + f.size/1.5, leafyY - f.size/2, f.size*0.7, 0, Math.PI*2);
-            ctx.fill();
+            ctx.arc(f.x + sway + f.size/1.5, leafyY - f.size/2, f.size*0.7, 0, Math.PI*2); ctx.fill();
         }
         else if (f.type === 'rock') {
-            ctx.fillStyle = f.color;
-            ctx.beginPath();
-            ctx.ellipse(f.x, f.y + 25, f.size, f.size/1.5, 0, 0, Math.PI*2);
-            ctx.fill();
-            ctx.fillStyle = "#7f8c8d";
-            ctx.beginPath();
-            ctx.ellipse(f.x - 5, f.y + 20, f.size/2, f.size/4, 0, 0, Math.PI*2);
-            ctx.fill();
+            ctx.fillStyle = time > 0.5 ? "#444" : f.color;
+            ctx.beginPath(); ctx.ellipse(f.x, f.y + 25, f.size, f.size/1.5, 0, 0, Math.PI*2); ctx.fill();
         }
+        ctx.shadowBlur = 0;
     });
 
     requestAnimationFrame(draw);
 }
 
-updateUI();
-draw();
+setInterval(updateUI, 1000); // Check time for UI updates
+updateUI(); draw();
 </script>
 </body>
 </html>
