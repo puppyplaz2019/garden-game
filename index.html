@@ -12,14 +12,16 @@
         .stats { background: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 20px; border: 2px solid #55acee; display: inline-block; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         
         #menu { position: absolute; bottom: 110px; width: 100%; text-align: center; z-index: 10; display: flex; justify-content: center; gap: 10px; }
-        .menu-item { background: white; border: 2px solid #55acee; padding: 10px; border-radius: 10px; cursor: pointer; transition: 0.2s; font-weight: bold; }
-        .menu-item.active { background: #55acee; color: white; transform: scale(1.1); }
+        .menu-item { background: white; border: 2px solid #55acee; padding: 10px 15px; border-radius: 12px; cursor: pointer; transition: 0.2s; font-weight: bold; font-size: 14px; }
+        .menu-item span { display: block; font-size: 10px; color: #555; margin-top: 4px; }
+        .menu-item.active { background: #55acee; color: white; transform: scale(1.1); border-color: #fff; }
+        .menu-item.active span { color: #fff; }
 
         #controls { position: absolute; bottom: 30px; width: 100%; text-align: center; display: flex; justify-content: center; gap: 15px; z-index: 10; }
         
         .btn { border: none; padding: 15px 25px; border-radius: 30px; cursor: pointer; font-weight: bold; font-family: 'Courier New'; transition: 0.3s; pointer-events: auto; }
-        #plant-btn { background: #4CAF50; color: white; box-shadow: 0 4px #2e7d32; }
-        #plant-btn:disabled { background: #ccc; box-shadow: 0 4px #999; }
+        #plant-btn { background: #4CAF50; color: white; box-shadow: 0 4px #2e7d32; min-width: 220px; }
+        #plant-btn:disabled { background: #ccc; box-shadow: 0 4px #999; opacity: 0.7; }
         #reset-btn { background: #e74c3c; color: white; box-shadow: 0 4px #c0392b; }
         
         #back-btn { position: absolute; top: 20px; left: 20px; text-decoration: none; color: #005f87; font-size: 14px; font-weight: bold; background: rgba(255,255,255,0.8); padding: 8px 15px; border-radius: 10px; z-index: 10; border: 1px solid #55acee; }
@@ -36,13 +38,13 @@
 </div>
 
 <div id="menu">
-    <div class="menu-item active" id="sel-flower" onclick="selectItem('flower')">🌸 FLOWER</div>
-    <div class="menu-item" id="sel-tree" onclick="selectItem('tree')">🌳 TREE</div>
-    <div class="menu-item" id="sel-rock" onclick="selectItem('rock')">🪨 ROCK</div>
+    <div class="menu-item active" id="sel-flower" onclick="selectItem('flower', 50)">🌸 FLOWER <span>50 ♪</span></div>
+    <div class="menu-item" id="sel-tree" onclick="selectItem('tree', 100)">🌳 TREE <span>100 ♪</span></div>
+    <div class="menu-item" id="sel-rock" onclick="selectItem('rock', 25)">🪨 ROCK <span>25 ♪</span></div>
 </div>
 
 <div id="controls">
-    <button class="btn" id="plant-btn" onclick="plantItem()">PLANT SELECTED (50 ♪)</button>
+    <button class="btn" id="plant-btn" onclick="plantItem()">PLANT SELECTED</button>
     <button class="btn" id="reset-btn" onclick="resetGarden()">RESET</button>
 </div>
 
@@ -61,22 +63,27 @@ resize();
 let notes = parseInt(localStorage.getItem('notes_collected') || 0);
 let gardenItems = JSON.parse(localStorage.getItem('zen_garden_items') || '[]');
 let currentSelection = 'flower';
+let currentPrice = 50;
 
-function selectItem(type) {
+function selectItem(type, price) {
     currentSelection = type;
+    currentPrice = price;
     document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
     document.getElementById('sel-' + type).classList.add('active');
+    updateUI();
 }
 
 function updateUI() {
     document.getElementById('note-count').innerText = notes;
     document.getElementById('item-count').innerText = gardenItems.length;
-    document.getElementById('plant-btn').disabled = (notes < 50);
+    const btn = document.getElementById('plant-btn');
+    btn.innerText = `PLANT ${currentSelection.toUpperCase()} (${currentPrice} ♪)`;
+    btn.disabled = (notes < currentPrice);
 }
 
 function plantItem() {
-    if (notes >= 50) {
-        notes -= 50;
+    if (notes >= currentPrice) {
+        notes -= currentPrice;
         const xPos = Math.random() * (canvas.width - 100) + 50;
         const hillHeight = Math.sin((xPos / canvas.width) * Math.PI) * 100;
         const yBase = canvas.height - 40 - hillHeight;
@@ -86,9 +93,10 @@ function plantItem() {
             x: xPos,
             y: yBase,
             size: 0,
-            maxSize: currentSelection === 'tree' ? 40 + Math.random()*20 : 15 + Math.random()*15,
+            maxSize: currentSelection === 'tree' ? 50 + Math.random()*30 : 15 + Math.random()*15,
             color: currentSelection === 'flower' ? `hsl(${Math.random() * 360}, 85%, 65%)` : (currentSelection === 'tree' ? '#2ecc71' : '#95a5a6'),
-            phase: Math.random() * Math.PI * 2
+            phase: Math.random() * Math.PI * 2,
+            trunkHeight: currentSelection === 'tree' ? 80 + Math.random()*60 : 20
         };
         gardenItems.push(newItem);
         save();
@@ -97,7 +105,7 @@ function plantItem() {
 }
 
 function resetGarden() {
-    if (confirm("Clear garden?")) {
+    if (confirm("Reset garden?")) {
         gardenItems = [];
         localStorage.removeItem('zen_garden_items');
         updateUI();
@@ -110,14 +118,12 @@ function save() {
 }
 
 function draw() {
-    // Background
     const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
     skyGrad.addColorStop(0, '#55acee');
     skyGrad.addColorStop(1, '#ffffff');
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Hill
     ctx.fillStyle = "#4CAF50";
     ctx.beginPath();
     ctx.moveTo(0, canvas.height);
@@ -126,10 +132,9 @@ function draw() {
     ctx.lineTo(0, canvas.height);
     ctx.fill();
 
-    // Items
     gardenItems.forEach(f => {
         if (f.size < f.maxSize) f.size += 0.2;
-        const sway = f.type === 'rock' ? 0 : Math.sin(Date.now() * 0.0015 + f.phase) * (f.type === 'tree' ? 15 : 8);
+        const sway = f.type === 'rock' ? 0 : Math.sin(Date.now() * 0.0012 + f.phase) * (f.type === 'tree' ? 20 : 8);
 
         if (f.type === 'flower') {
             ctx.strokeStyle = "#2e7d32"; ctx.lineWidth = 3;
@@ -142,25 +147,33 @@ function draw() {
             ctx.fillStyle = "#FFD700"; ctx.beginPath(); ctx.arc(f.x+sway, f.y, f.size/2.5, 0, Math.PI*2); ctx.fill();
         } 
         else if (f.type === 'tree') {
-            // Trunk
+            // Taller Slender Trunk
             ctx.fillStyle = "#5d4037";
-            ctx.fillRect(f.x - 5, f.y, 10, 40);
-            // Leaves
-            ctx.fillStyle = f.color;
+            const currentTrunkH = (f.size / f.maxSize) * f.trunkHeight;
             ctx.beginPath();
-            ctx.arc(f.x + sway, f.y - f.size/2, f.size, 0, Math.PI*2);
-            ctx.arc(f.x + sway - 15, f.y - f.size, f.size*0.8, 0, Math.PI*2);
-            ctx.arc(f.x + sway + 15, f.y - f.size, f.size*0.8, 0, Math.PI*2);
+            ctx.moveTo(f.x - 4, f.y + 20);
+            ctx.lineTo(f.x + sway - 2, f.y - currentTrunkH);
+            ctx.lineTo(f.x + sway + 2, f.y - currentTrunkH);
+            ctx.lineTo(f.x + 4, f.y + 20);
+            ctx.fill();
+
+            // Large Canopy
+            ctx.fillStyle = f.color;
+            const leafyY = f.y - currentTrunkH;
+            ctx.beginPath();
+            ctx.arc(f.x + sway, leafyY, f.size, 0, Math.PI*2);
+            ctx.arc(f.x + sway - f.size/1.5, leafyY - f.size/2, f.size*0.7, 0, Math.PI*2);
+            ctx.arc(f.x + sway + f.size/1.5, leafyY - f.size/2, f.size*0.7, 0, Math.PI*2);
             ctx.fill();
         }
         else if (f.type === 'rock') {
             ctx.fillStyle = f.color;
             ctx.beginPath();
-            ctx.ellipse(f.x, f.y + 20, f.size, f.size/1.5, 0, 0, Math.PI*2);
+            ctx.ellipse(f.x, f.y + 25, f.size, f.size/1.5, 0, 0, Math.PI*2);
             ctx.fill();
-            ctx.fillStyle = "#7f8c8d"; // Highlight
+            ctx.fillStyle = "#7f8c8d";
             ctx.beginPath();
-            ctx.ellipse(f.x - 5, f.y + 15, f.size/2, f.size/4, 0, 0, Math.PI*2);
+            ctx.ellipse(f.x - 5, f.y + 20, f.size/2, f.size/4, 0, 0, Math.PI*2);
             ctx.fill();
         }
     });
