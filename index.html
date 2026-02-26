@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sanco's Zen Garden</title>
     <style>
-        /* CSS Backgrounds are way faster than Canvas drawing */
         body { 
             margin: 0; 
             background: linear-gradient(#87CEEB, #fff); 
@@ -14,22 +13,20 @@
             font-family: 'Courier New', monospace;
         }
         
-        /* Fixed Grassy Field */
         .grass {
             position: absolute;
             bottom: 0;
             width: 100%;
-            height: 200px;
+            height: 220px;
             background: #3d8c40;
-            border-top: 10px solid #2d6a30;
-            border-radius: 50% 50% 0 0 / 20px 20px 0 0;
+            border-top: 8px solid #2d6a30;
             z-index: 1;
         }
 
-        canvas { position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none; }
+        canvas { position: absolute; top: 0; left: 0; z-index: 2; cursor: crosshair; }
         
         #ui, #menu, #controls { position: absolute; width: 100%; text-align: center; z-index: 10; }
-        #ui { top: 20px; }
+        #ui { top: 20px; pointer-events: none; }
         .stats { background: white; padding: 10px; border-radius: 15px; border: 2px solid #55acee; display: inline-block; font-weight: bold; }
         
         #menu { bottom: 100px; display: flex; justify-content: center; gap: 8px; }
@@ -38,14 +35,17 @@
 
         #controls { bottom: 25px; display: flex; justify-content: center; gap: 10px; }
         .btn { border: none; padding: 12px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; }
-        #plant-btn { background: #4CAF50; color: white; min-width: 200px; }
-        #plant-btn:disabled { background: #666; cursor: not-allowed; }
+        #plant-btn { background: #4CAF50; color: white; min-width: 180px; }
+        #plant-btn:disabled { background: #666; }
         #reset-btn { background: #e74c3c; color: white; }
+        
+        #hint { position: absolute; top: 80px; width: 100%; text-align: center; font-size: 10px; color: #005f87; z-index: 5; }
     </style>
 </head>
 <body>
 
 <div class="grass"></div>
+<div id="hint">Click an object to remove it</div>
 
 <div id="ui">
     <div class="stats">
@@ -61,7 +61,7 @@
 
 <div id="controls">
     <button class="btn" id="plant-btn" onclick="plantItem()">PLANT SELECTED</button>
-    <button class="btn" id="reset-btn" onclick="resetGarden()">RESET</button>
+    <button class="btn" id="reset-btn" onclick="resetGarden()">RESET ALL</button>
 </div>
 
 <script>
@@ -93,47 +93,96 @@ function updateUI() {
     document.getElementById('note-count').innerText = notes;
     document.getElementById('item-count').innerText = gardenItems.length;
     const btn = document.getElementById('plant-btn');
-    
     if (gardenItems.length >= 30) {
-        btn.innerText = "GARDEN FULL (30/30)";
+        btn.innerText = "FULL (30/30)";
         btn.disabled = true;
     } else {
-        btn.innerText = `PLANT ${currentSelection.toUpperCase()} (${currentPrice} ♪)`;
+        btn.innerText = `PLANT ${currentSelection.toUpperCase()} (${currentPrice})`;
         btn.disabled = (notes < currentPrice);
     }
 }
 
-function plantItem() {
-    if (notes >= currentPrice && gardenItems.length < 30) {
-        notes -= currentPrice;
-        const xPos = Math.random() * (canvas.width - 100) + 50;
-        const yBase = canvas.height - 100 - (Math.random() * 40);
+// Check if a point is too close to existing items
+function isSpaceOccupied(x, y, radius) {
+    return gardenItems.some(item => {
+        const dx = x - item.x;
+        const dy = y - item.y;
+        const distance = Math.sqrt(dx*dx + dy*dy);
+        return distance < (radius + 40); // 40px padding to prevent fusing
+    });
+}
 
+function plantItem() {
+    if (notes < currentPrice || gardenItems.length >= 30) return;
+
+    let foundSpot = false;
+    let x, y;
+    let attempts = 0;
+
+    // Try up to 50 times to find a random empty spot in the grass area
+    while (!foundSpot && attempts < 50) {
+        x = 50 + Math.random() * (canvas.width - 100);
+        y = canvas.height - 180 + Math.random() * 120; // Restricted to grass field
+        if (!isSpaceOccupied(x, y, 30)) {
+            foundSpot = true;
+        }
+        attempts++;
+    }
+
+    if (foundSpot) {
+        notes -= currentPrice;
         gardenItems.push({
+            id: Date.now(),
             type: currentSelection,
-            x: xPos, y: yBase, size: 0,
+            x: x, y: y, size: 0,
             maxSize: currentSelection === 'tree' ? 45 : 12,
             color: currentSelection === 'flower' ? `hsl(${Math.random()*360},80%,60%)` : (currentSelection === 'tree' ? '#2d5a27' : '#777'),
-            trunkH: 150 + Math.random() * 100 // Taller trees
+            trunkH: 140 + Math.random() * 80
         });
         save(); updateUI();
+    } else {
+        alert("No room here! Try resetting or removing an item.");
     }
 }
+
+// Remove individual items on click
+canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const initialLength = gardenItems.length;
+    gardenItems = gardenItems.filter(item => {
+        const dx = mouseX - item.x;
+        const dy = mouseY - item.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        // If it's a tree, we check higher up too for the canopy
+        const hitTree = (item.type === 'tree' && Math.abs(mouseX - item.x) < 30 && mouseY < item.y && mouseY > item.y - item.trunkH - 50);
+        return dist > 40 && !hitTree;
+    });
+
+    if (gardenItems.length !== initialLength) {
+        save();
+        updateUI();
+    }
+});
 
 function resetGarden() { if (confirm("Clear garden?")) { gardenItems = []; localStorage.removeItem('zen_garden_items'); updateUI(); } }
 function save() { localStorage.setItem('notes_collected', notes); localStorage.setItem('zen_garden_items', JSON.stringify(gardenItems)); }
 
 function draw() {
-    // We only clear the canvas, not redraw the background (saves HUGE memory)
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Sort items by Y position so things in the "back" are drawn first
+    gardenItems.sort((a, b) => a.y - b.y);
+
     gardenItems.forEach(f => {
-        if (f.size < f.maxSize) f.size += 0.5; // Faster growth
-        const sway = f.type === 'rock' ? 0 : Math.sin(Date.now() * 0.001 + (f.x)) * (f.type === 'tree' ? 10 : 5);
+        if (f.size < f.maxSize) f.size += 0.5;
+        const sway = f.type === 'rock' ? 0 : Math.sin(Date.now() * 0.001 + (f.x)) * (f.type === 'tree' ? 8 : 4);
 
         if (f.type === 'flower') {
             ctx.strokeStyle = "#1a4a1d"; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(f.x, f.y + 20); ctx.lineTo(f.x + sway, f.y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(f.x, f.y + 10); ctx.lineTo(f.x + sway, f.y); ctx.stroke();
             ctx.fillStyle = f.color;
             for(let i=0; i<5; i++) {
                 const a = (i/5)*Math.PI*2;
@@ -144,22 +193,22 @@ function draw() {
             const th = f.trunkH * (f.size / f.maxSize);
             ctx.fillStyle = "#4a3728";
             ctx.beginPath();
-            ctx.moveTo(f.x - 6, f.y + 40); 
-            ctx.lineTo(f.x + sway, f.y - th); // Tapered
-            ctx.lineTo(f.x + sway + 4, f.y - th);
-            ctx.lineTo(f.x + 6, f.y + 40);
+            ctx.moveTo(f.x - 5, f.y + 10); 
+            ctx.lineTo(f.x + sway, f.y - th); 
+            ctx.lineTo(f.x + sway + 3, f.y - th);
+            ctx.lineTo(f.x + 5, f.y + 10);
             ctx.fill();
 
             ctx.fillStyle = f.color;
             ctx.beginPath(); 
             ctx.arc(f.x + sway, f.y - th, f.size, 0, Math.PI*2);
-            ctx.arc(f.x + sway - 20, f.y - th - 10, f.size * 0.7, 0, Math.PI*2);
-            ctx.arc(f.x + sway + 20, f.y - th - 10, f.size * 0.7, 0, Math.PI*2);
+            ctx.arc(f.x + sway - 18, f.y - th - 8, f.size * 0.7, 0, Math.PI*2);
+            ctx.arc(f.x + sway + 18, f.y - th - 8, f.size * 0.7, 0, Math.PI*2);
             ctx.fill();
         }
         else if (f.type === 'rock') {
             ctx.fillStyle = "#666";
-            ctx.beginPath(); ctx.ellipse(f.x, f.y + 40, f.size*1.5, f.size, 0, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(f.x, f.y + 10, f.size*1.6, f.size, 0, 0, Math.PI*2); ctx.fill();
         }
     });
 
