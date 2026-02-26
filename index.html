@@ -5,39 +5,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sanco's Zen Garden</title>
     <style>
-        body { margin: 0; background: #87CEEB; color: #333; font-family: 'Courier New', monospace; overflow: hidden; touch-action: none; }
-        canvas { display: block; position: absolute; top: 0; left: 0; }
+        /* CSS Backgrounds are way faster than Canvas drawing */
+        body { 
+            margin: 0; 
+            background: linear-gradient(#87CEEB, #fff); 
+            height: 100vh;
+            overflow: hidden; 
+            font-family: 'Courier New', monospace;
+        }
+        
+        /* Fixed Grassy Field */
+        .grass {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 200px;
+            background: #3d8c40;
+            border-top: 10px solid #2d6a30;
+            border-radius: 50% 50% 0 0 / 20px 20px 0 0;
+            z-index: 1;
+        }
+
+        canvas { position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none; }
         
         #ui, #menu, #controls { position: absolute; width: 100%; text-align: center; z-index: 10; }
-        #ui { top: 20px; pointer-events: none; }
-        .stats { background: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 20px; border: 2px solid #55acee; display: inline-block; font-weight: bold; }
+        #ui { top: 20px; }
+        .stats { background: white; padding: 10px; border-radius: 15px; border: 2px solid #55acee; display: inline-block; font-weight: bold; }
         
         #menu { bottom: 100px; display: flex; justify-content: center; gap: 8px; }
-        .menu-item { background: white; border: 2px solid #55acee; padding: 8px 12px; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 13px; }
-        .menu-item span { display: block; font-size: 9px; color: #555; }
-        .menu-item.active { background: #55acee; color: white; transform: scale(1.05); }
+        .menu-item { background: white; border: 2px solid #55acee; padding: 8px; border-radius: 10px; cursor: pointer; font-size: 12px; }
+        .menu-item.active { background: #55acee; color: white; }
 
         #controls { bottom: 25px; display: flex; justify-content: center; gap: 10px; }
-        .btn { border: none; padding: 12px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; font-family: 'Courier New'; }
-        #plant-btn { background: #4CAF50; color: white; box-shadow: 0 4px #2e7d32; min-width: 200px; }
-        #reset-btn { background: #e74c3c; color: white; box-shadow: 0 4px #c0392b; }
-        #back-btn { position: absolute; top: 20px; left: 20px; text-decoration: none; color: #005f87; font-size: 12px; font-weight: bold; background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 8px; z-index: 10; border: 1px solid #55acee; }
+        .btn { border: none; padding: 12px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; }
+        #plant-btn { background: #4CAF50; color: white; min-width: 200px; }
+        #plant-btn:disabled { background: #666; cursor: not-allowed; }
+        #reset-btn { background: #e74c3c; color: white; }
     </style>
 </head>
 <body>
 
-<a href="https://puppyplaz2019.github.io/Arcade-HUB/" id="back-btn">← EXIT</a>
+<div class="grass"></div>
 
 <div id="ui">
-    <div class="stats" id="stat-bar">
-        NOTES: <span id="note-count">0</span> ♪ | ITEMS: <span id="item-count">0</span>
+    <div class="stats">
+        NOTES: <span id="note-count">0</span> ♪ | <span id="item-count">0</span>/30 ITEMS
     </div>
 </div>
 
 <div id="menu">
-    <div class="menu-item active" id="sel-flower" onclick="selectItem('flower', 50)">🌸 FLOWER <span>50 ♪</span></div>
-    <div class="menu-item" id="sel-tree" onclick="selectItem('tree', 100)">🌳 TREE <span>100 ♪</span></div>
-    <div class="menu-item" id="sel-rock" onclick="selectItem('rock', 25)">🪨 ROCK <span>25 ♪</span></div>
+    <div class="menu-item active" id="sel-flower" onclick="selectItem('flower', 50)">🌸 FLOWER (50)</div>
+    <div class="menu-item" id="sel-tree" onclick="selectItem('tree', 100)">🌳 TREE (100)</div>
+    <div class="menu-item" id="sel-rock" onclick="selectItem('rock', 25)">🪨 ROCK (25)</div>
 </div>
 
 <div id="controls">
@@ -74,94 +93,73 @@ function updateUI() {
     document.getElementById('note-count').innerText = notes;
     document.getElementById('item-count').innerText = gardenItems.length;
     const btn = document.getElementById('plant-btn');
-    btn.innerText = `PLANT ${currentSelection.toUpperCase()} (${currentPrice} ♪)`;
-    btn.disabled = (notes < currentPrice);
+    
+    if (gardenItems.length >= 30) {
+        btn.innerText = "GARDEN FULL (30/30)";
+        btn.disabled = true;
+    } else {
+        btn.innerText = `PLANT ${currentSelection.toUpperCase()} (${currentPrice} ♪)`;
+        btn.disabled = (notes < currentPrice);
+    }
 }
 
 function plantItem() {
-    if (notes >= currentPrice) {
+    if (notes >= currentPrice && gardenItems.length < 30) {
         notes -= currentPrice;
         const xPos = Math.random() * (canvas.width - 100) + 50;
-        const hillHeight = Math.sin((xPos / canvas.width) * Math.PI) * 100;
-        const yBase = canvas.height - 40 - hillHeight;
+        const yBase = canvas.height - 100 - (Math.random() * 40);
 
         gardenItems.push({
             type: currentSelection,
             x: xPos, y: yBase, size: 0,
-            maxSize: currentSelection === 'tree' ? 50 + Math.random()*20 : 12 + Math.random()*10,
-            color: currentSelection === 'flower' ? `hsl(${Math.random() * 360}, 80%, 60%)` : (currentSelection === 'tree' ? '#2d5a27' : '#777'),
-            phase: Math.random() * Math.PI * 2,
-            trunkH: 100 + Math.random() * 80 // Much taller
+            maxSize: currentSelection === 'tree' ? 45 : 12,
+            color: currentSelection === 'flower' ? `hsl(${Math.random()*360},80%,60%)` : (currentSelection === 'tree' ? '#2d5a27' : '#777'),
+            trunkH: 150 + Math.random() * 100 // Taller trees
         });
         save(); updateUI();
     }
 }
 
-function resetGarden() { if (confirm("Reset garden?")) { gardenItems = []; localStorage.removeItem('zen_garden_items'); updateUI(); } }
+function resetGarden() { if (confirm("Clear garden?")) { gardenItems = []; localStorage.removeItem('zen_garden_items'); updateUI(); } }
 function save() { localStorage.setItem('notes_collected', notes); localStorage.setItem('zen_garden_items', JSON.stringify(gardenItems)); }
 
 function draw() {
-    // Optimization: Use solid color or simple gradient
-    ctx.fillStyle = "#87CEEB"; 
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Hill
-    ctx.fillStyle = "#3d8c40";
-    ctx.beginPath(); ctx.moveTo(0, canvas.height);
-    ctx.quadraticCurveTo(canvas.width/2, canvas.height - 250, canvas.width, canvas.height);
-    ctx.lineTo(canvas.width, canvas.height); ctx.lineTo(0, canvas.height); ctx.fill();
-
-    const now = Date.now();
+    // We only clear the canvas, not redraw the background (saves HUGE memory)
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     gardenItems.forEach(f => {
-        if (f.size < f.maxSize) f.size += 0.2;
-        const sway = f.type === 'rock' ? 0 : Math.sin(now * 0.001 + f.phase) * (f.type === 'tree' ? 12 : 6);
+        if (f.size < f.maxSize) f.size += 0.5; // Faster growth
+        const sway = f.type === 'rock' ? 0 : Math.sin(Date.now() * 0.001 + (f.x)) * (f.type === 'tree' ? 10 : 5);
 
         if (f.type === 'flower') {
             ctx.strokeStyle = "#1a4a1d"; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(f.x, f.y + 20); ctx.quadraticCurveTo(f.x + sway/2, f.y + 10, f.x + sway, f.y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(f.x, f.y + 20); ctx.lineTo(f.x + sway, f.y); ctx.stroke();
             ctx.fillStyle = f.color;
             for(let i=0; i<5; i++) {
                 const a = (i/5)*Math.PI*2;
                 ctx.beginPath(); ctx.arc(f.x+sway+Math.cos(a)*f.size, f.y+Math.sin(a)*f.size, f.size/1.5, 0, Math.PI*2); ctx.fill();
             }
-            ctx.fillStyle = "#FFD700"; ctx.beginPath(); ctx.arc(f.x+sway, f.y, f.size/2, 0, Math.PI*2); ctx.fill();
         } 
         else if (f.type === 'tree') {
-            const growth = f.size / f.maxSize;
-            const th = f.trunkH * growth;
-            
-            // Real-look tapered trunk
+            const th = f.trunkH * (f.size / f.maxSize);
             ctx.fillStyle = "#4a3728";
             ctx.beginPath();
-            ctx.moveTo(f.x - 8, f.y + 30); // Base
-            ctx.quadraticCurveTo(f.x, f.y - th/2, f.x + sway, f.y - th); // Tapered top
-            ctx.lineTo(f.x + sway + 2, f.y - th);
-            ctx.quadraticCurveTo(f.x + 8, f.y - th/2, f.x + 8, f.y + 30);
+            ctx.moveTo(f.x - 6, f.y + 40); 
+            ctx.lineTo(f.x + sway, f.y - th); // Tapered
+            ctx.lineTo(f.x + sway + 4, f.y - th);
+            ctx.lineTo(f.x + 6, f.y + 40);
             ctx.fill();
 
-            // Branches
-            ctx.strokeStyle = "#4a3728"; ctx.lineWidth = 3 * growth;
-            ctx.beginPath();
-            ctx.moveTo(f.x + sway, f.y - th + 20);
-            ctx.lineTo(f.x + sway - 20, f.y - th - 10);
-            ctx.moveTo(f.x + sway, f.y - th + 30);
-            ctx.lineTo(f.x + sway + 20, f.y - th - 5);
-            ctx.stroke();
-
-            // Foliage (Leaves)
             ctx.fillStyle = f.color;
-            const ly = f.y - th;
             ctx.beginPath(); 
-            ctx.arc(f.x + sway, ly, f.size, 0, Math.PI*2);
-            ctx.arc(f.x + sway - 20, ly - 10, f.size * 0.8, 0, Math.PI*2);
-            ctx.arc(f.x + sway + 20, ly - 10, f.size * 0.8, 0, Math.PI*2);
-            ctx.arc(f.x + sway, ly - 25, f.size * 0.9, 0, Math.PI*2);
+            ctx.arc(f.x + sway, f.y - th, f.size, 0, Math.PI*2);
+            ctx.arc(f.x + sway - 20, f.y - th - 10, f.size * 0.7, 0, Math.PI*2);
+            ctx.arc(f.x + sway + 20, f.y - th - 10, f.size * 0.7, 0, Math.PI*2);
             ctx.fill();
         }
         else if (f.type === 'rock') {
             ctx.fillStyle = "#666";
-            ctx.beginPath(); ctx.ellipse(f.x, f.y + 30, f.size*1.5, f.size, 0, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(f.x, f.y + 40, f.size*1.5, f.size, 0, 0, Math.PI*2); ctx.fill();
         }
     });
 
