@@ -7,14 +7,24 @@
     <style>
         body { margin: 0; background: #87CEEB; color: #333; font-family: 'Courier New', monospace; overflow: hidden; touch-action: none; }
         canvas { display: block; }
+        
         #ui { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; }
         .stats { background: rgba(255,255,255,0.8); padding: 10px 20px; border-radius: 20px; border: 2px solid #55acee; display: inline-block; font-weight: bold; }
-        #controls { position: absolute; bottom: 30px; width: 100%; text-align: center; }
-        .shop-btn { background: #4CAF50; color: white; border: none; padding: 15px 25px; border-radius: 30px; cursor: pointer; font-weight: bold; font-family: 'Courier New'; transition: 0.3s; box-shadow: 0 4px #2e7d32; }
-        .shop-btn:hover { background: #45a049; transform: translateY(-2px); }
-        .shop-btn:active { transform: translateY(2px); box-shadow: 0 0 #2e7d32; }
-        .shop-btn:disabled { background: #ccc; box-shadow: 0 4px #999; cursor: default; }
-        #back-btn { position: absolute; top: 20px; left: 20px; text-decoration: none; color: #005f87; font-size: 14px; font-weight: bold; background: rgba(255,255,255,0.5); padding: 5px 10px; border-radius: 5px; }
+        
+        #controls { position: absolute; bottom: 30px; width: 100%; text-align: center; display: flex; justify-content: center; gap: 15px; }
+        
+        .btn { border: none; padding: 15px 25px; border-radius: 30px; cursor: pointer; font-weight: bold; font-family: 'Courier New'; transition: 0.3s; }
+        
+        #plant-btn { background: #4CAF50; color: white; box-shadow: 0 4px #2e7d32; }
+        #plant-btn:hover { background: #45a049; transform: translateY(-2px); }
+        #plant-btn:active { transform: translateY(2px); box-shadow: 0 0 #2e7d32; }
+        #plant-btn:disabled { background: #ccc; box-shadow: 0 4px #999; cursor: default; }
+        
+        #reset-btn { background: #e74c3c; color: white; box-shadow: 0 4px #c0392b; }
+        #reset-btn:hover { background: #ff5e4d; transform: translateY(-2px); }
+        #reset-btn:active { transform: translateY(2px); box-shadow: 0 0 #c0392b; }
+        
+        #back-btn { position: absolute; top: 20px; left: 20px; text-decoration: none; color: #005f87; font-size: 14px; font-weight: bold; background: rgba(255,255,255,0.5); padding: 5px 10px; border-radius: 5px; z-index: 10; }
     </style>
 </head>
 <body>
@@ -28,7 +38,8 @@
 </div>
 
 <div id="controls">
-    <button class="shop-btn" id="plant-btn" onclick="plantFlower()">PLANT HARMONY SEED (50 ♪)</button>
+    <button class="btn" id="plant-btn" onclick="plantFlower()">PLANT SEED (50 ♪)</button>
+    <button class="btn" id="reset-btn" onclick="resetGarden()">RESET GARDEN</button>
 </div>
 
 <script>
@@ -36,18 +47,24 @@ const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d');
 document.body.appendChild(canvas);
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+// Dynamic Canvas Sizing
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
 
+// Global Data
 let notes = parseInt(localStorage.getItem('notes_collected') || 0);
 let flowers = JSON.parse(localStorage.getItem('zen_garden_flowers') || '[]');
 
-// Cloud data
+// Cloud Generation
 const clouds = Array.from({ length: 5 }, () => ({
     x: Math.random() * canvas.width,
     y: 50 + Math.random() * 150,
-    speed: 0.2 + Math.random() * 0.5,
-    w: 100 + Math.random() * 100
+    speed: 0.1 + Math.random() * 0.3,
+    w: 120 + Math.random() * 100
 }));
 
 function updateUI() {
@@ -57,91 +74,4 @@ function updateUI() {
 }
 
 function plantFlower() {
-    if (notes >= 50) {
-        notes -= 50;
-        const newFlower = {
-            x: Math.random() * (canvas.width - 100) + 50,
-            y: canvas.height - 80 - (Math.random() * 40), // Ground level
-            size: 0,
-            maxSize: 25 + Math.random() * 25,
-            color: `hsl(${Math.random() * 360}, 85%, 70%)`,
-            phase: Math.random() * Math.PI * 2
-        };
-        flowers.push(newFlower);
-        saveGarden();
-        updateUI();
-    }
-}
-
-function saveGarden() {
-    localStorage.setItem('notes_collected', notes);
-    localStorage.setItem('zen_garden_flowers', JSON.stringify(flowers));
-}
-
-function draw() {
-    // 1. Draw Sky
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    skyGrad.addColorStop(0, '#55acee');
-    skyGrad.addColorStop(1, '#fff');
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 2. Draw Clouds
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
-    clouds.forEach(c => {
-        c.x += c.speed;
-        if (c.x > canvas.width) c.x = -c.w;
-        ctx.beginPath();
-        ctx.ellipse(c.x, c.y, c.w/2, 30, 0, 0, Math.PI*2);
-        ctx.fill();
-    });
-
-    // 3. Draw Grass Ground
-    ctx.fillStyle = "#4CAF50";
-    ctx.beginPath();
-    ctx.moveTo(0, canvas.height);
-    ctx.quadraticCurveTo(canvas.width/2, canvas.height - 150, canvas.width, canvas.height);
-    ctx.lineTo(canvas.width, canvas.height);
-    ctx.lineTo(0, canvas.height);
-    ctx.fill();
-
-    // 4. Draw Flowers
-    flowers.forEach(f => {
-        if (f.size < f.maxSize) f.size += 0.2; 
-
-        const sway = Math.sin(Date.now() * 0.002 + f.phase) * 10;
-        
-        // Green Stem
-        ctx.strokeStyle = "#2e7d32";
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(f.x, f.y + 40);
-        ctx.quadraticCurveTo(f.x + sway, f.y + 20, f.x + sway, f.y);
-        ctx.stroke();
-
-        // Petals
-        ctx.fillStyle = f.color;
-        for(let i=0; i<6; i++) {
-            const angle = (i / 6) * Math.PI * 2;
-            const px = (f.x + sway) + Math.cos(angle) * (f.size * 0.8);
-            const py = f.y + Math.sin(angle) * (f.size * 0.8);
-            ctx.beginPath();
-            ctx.arc(px, py, f.size/2, 0, Math.PI*2);
-            ctx.fill();
-        }
-
-        // Yellow Center
-        ctx.fillStyle = "#FFD700";
-        ctx.beginPath();
-        ctx.arc(f.x + sway, f.y, f.size/3, 0, Math.PI*2);
-        ctx.fill();
-    });
-
-    requestAnimationFrame(draw);
-}
-
-updateUI();
-draw();
-</script>
-</body>
-</html>
+    if (notes >= 50)
