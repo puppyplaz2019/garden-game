@@ -6,30 +6,30 @@
     <title>Sanco's Zen Garden</title>
     <style>
         body { margin: 0; background: #87CEEB; color: #333; font-family: 'Courier New', monospace; overflow: hidden; touch-action: none; }
-        canvas { display: block; }
+        canvas { display: block; position: absolute; top: 0; left: 0; }
         
-        #ui { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; }
-        .stats { background: rgba(255,255,255,0.8); padding: 10px 20px; border-radius: 20px; border: 2px solid #55acee; display: inline-block; font-weight: bold; }
+        #ui { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; z-index: 10; }
+        .stats { background: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 20px; border: 2px solid #55acee; display: inline-block; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         
-        #controls { position: absolute; bottom: 30px; width: 100%; text-align: center; display: flex; justify-content: center; gap: 15px; }
+        #controls { position: absolute; bottom: 40px; width: 100%; text-align: center; display: flex; justify-content: center; gap: 15px; z-index: 10; }
         
-        .btn { border: none; padding: 15px 25px; border-radius: 30px; cursor: pointer; font-weight: bold; font-family: 'Courier New'; transition: 0.3s; }
+        .btn { border: none; padding: 15px 25px; border-radius: 30px; cursor: pointer; font-weight: bold; font-family: 'Courier New'; transition: 0.3s; pointer-events: auto; }
         
         #plant-btn { background: #4CAF50; color: white; box-shadow: 0 4px #2e7d32; }
         #plant-btn:hover { background: #45a049; transform: translateY(-2px); }
         #plant-btn:active { transform: translateY(2px); box-shadow: 0 0 #2e7d32; }
-        #plant-btn:disabled { background: #ccc; box-shadow: 0 4px #999; cursor: default; }
+        #plant-btn:disabled { background: #ccc; box-shadow: 0 4px #999; cursor: default; transform: none; }
         
         #reset-btn { background: #e74c3c; color: white; box-shadow: 0 4px #c0392b; }
         #reset-btn:hover { background: #ff5e4d; transform: translateY(-2px); }
         #reset-btn:active { transform: translateY(2px); box-shadow: 0 0 #c0392b; }
         
-        #back-btn { position: absolute; top: 20px; left: 20px; text-decoration: none; color: #005f87; font-size: 14px; font-weight: bold; background: rgba(255,255,255,0.5); padding: 5px 10px; border-radius: 5px; z-index: 10; }
+        #back-btn { position: absolute; top: 20px; left: 20px; text-decoration: none; color: #005f87; font-size: 14px; font-weight: bold; background: rgba(255,255,255,0.8); padding: 8px 15px; border-radius: 10px; z-index: 10; border: 1px solid #55acee; }
     </style>
 </head>
 <body>
 
-<a href="index.html" id="back-btn">← EXIT GARDEN</a>
+<a href="https://puppyplaz2019.github.io/Arcade-HUB/" id="back-btn">← EXIT GARDEN</a>
 
 <div id="ui">
     <div class="stats">
@@ -47,7 +47,6 @@ const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d');
 document.body.appendChild(canvas);
 
-// Dynamic Canvas Sizing
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -55,16 +54,14 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// Global Data
 let notes = parseInt(localStorage.getItem('notes_collected') || 0);
 let flowers = JSON.parse(localStorage.getItem('zen_garden_flowers') || '[]');
 
-// Cloud Generation
-const clouds = Array.from({ length: 5 }, () => ({
+const clouds = Array.from({ length: 6 }, () => ({
     x: Math.random() * canvas.width,
-    y: 50 + Math.random() * 150,
-    speed: 0.1 + Math.random() * 0.3,
-    w: 120 + Math.random() * 100
+    y: 40 + Math.random() * 160,
+    speed: 0.15 + Math.random() * 0.4,
+    w: 100 + Math.random() * 80
 }));
 
 function updateUI() {
@@ -74,4 +71,103 @@ function updateUI() {
 }
 
 function plantFlower() {
-    if (notes >= 50)
+    if (notes >= 50) {
+        notes -= 50;
+        // Calculation to ensure flowers land on the "Hill"
+        const xPos = Math.random() * (canvas.width - 100) + 50;
+        // This math matches the quadraticCurveTo of the grass hill
+        const hillHeight = Math.sin((xPos / canvas.width) * Math.PI) * 100;
+        const yPos = canvas.height - 40 - hillHeight;
+
+        const newFlower = {
+            x: xPos,
+            y: yPos,
+            size: 0,
+            maxSize: 20 + Math.random() * 20,
+            color: `hsl(${Math.random() * 360}, 85%, 65%)`,
+            phase: Math.random() * Math.PI * 2
+        };
+        flowers.push(newFlower);
+        save();
+        updateUI();
+    }
+}
+
+function resetGarden() {
+    if (confirm("Reset the garden?")) {
+        flowers = [];
+        localStorage.removeItem('zen_garden_flowers');
+        updateUI();
+    }
+}
+
+function save() {
+    localStorage.setItem('notes_collected', notes);
+    localStorage.setItem('zen_garden_flowers', JSON.stringify(flowers));
+}
+
+function draw() {
+    // 1. Sky
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    skyGrad.addColorStop(0, '#55acee');
+    skyGrad.addColorStop(1, '#ffffff');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 2. Clouds
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    clouds.forEach(c => {
+        c.x += c.speed;
+        if (c.x > canvas.width + 100) c.x = -c.w;
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y, c.w/2, 30, 0, 0, Math.PI*2);
+        ctx.fill();
+    });
+
+    // 3. Grass Hill
+    ctx.fillStyle = "#4CAF50";
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height);
+    // This creates the curve
+    ctx.quadraticCurveTo(canvas.width/2, canvas.height - 250, canvas.width, canvas.height);
+    ctx.lineTo(canvas.width, canvas.height);
+    ctx.lineTo(0, canvas.height);
+    ctx.fill();
+
+    // 4. Flowers
+    flowers.forEach(f => {
+        if (f.size < f.maxSize) f.size += 0.25; 
+        const sway = Math.sin(Date.now() * 0.002 + f.phase) * 10;
+        
+        // Stem
+        ctx.strokeStyle = "#2e7d32";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(f.x, f.y + 30); // Anchor in grass
+        ctx.quadraticCurveTo(f.x + sway/2, f.y + 15, f.x + sway, f.y);
+        ctx.stroke();
+
+        // Petals
+        ctx.fillStyle = f.color;
+        for(let i=0; i<6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            ctx.beginPath();
+            ctx.arc(f.x + sway + Math.cos(angle) * (f.size*0.7), f.y + Math.sin(angle) * (f.size*0.7), f.size/1.8, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        // Center
+        ctx.fillStyle = "#FFD700";
+        ctx.beginPath();
+        ctx.arc(f.x + sway, f.y, f.size/2.5, 0, Math.PI*2);
+        ctx.fill();
+    });
+
+    requestAnimationFrame(draw);
+}
+
+updateUI();
+draw();
+</script>
+</body>
+</html>
