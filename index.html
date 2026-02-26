@@ -5,27 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sanco's Zen Garden</title>
     <style>
-        body { margin: 0; background: #000; color: #333; font-family: 'Courier New', monospace; overflow: hidden; touch-action: none; }
+        body { margin: 0; background: #87CEEB; color: #333; font-family: 'Courier New', monospace; overflow: hidden; touch-action: none; }
         canvas { display: block; position: absolute; top: 0; left: 0; }
         
-        #ui { position: absolute; top: 20px; width: 100%; text-align: center; pointer-events: none; z-index: 10; }
-        .stats { background: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 20px; border: 2px solid #55acee; display: inline-block; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: 0.5s; }
-        .night-ui { background: rgba(20, 20, 40, 0.9); color: #fff; border-color: #5d5dff; }
+        #ui, #menu, #controls { position: absolute; width: 100%; text-align: center; z-index: 10; }
+        #ui { top: 20px; pointer-events: none; }
+        .stats { background: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 20px; border: 2px solid #55acee; display: inline-block; font-weight: bold; }
         
-        #menu { position: absolute; bottom: 110px; width: 100%; text-align: center; z-index: 10; display: flex; justify-content: center; gap: 10px; }
-        .menu-item { background: white; border: 2px solid #55acee; padding: 10px 15px; border-radius: 12px; cursor: pointer; transition: 0.2s; font-weight: bold; font-size: 14px; }
-        .menu-item span { display: block; font-size: 10px; color: #555; margin-top: 4px; }
-        .menu-item.active { background: #55acee; color: white; transform: scale(1.1); border-color: #fff; }
-        .night-item { background: #1a1a2e; color: #fff; border-color: #333; }
-        .night-item span { color: #aaa; }
+        #menu { bottom: 100px; display: flex; justify-content: center; gap: 8px; }
+        .menu-item { background: white; border: 2px solid #55acee; padding: 8px 12px; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 13px; }
+        .menu-item span { display: block; font-size: 9px; color: #555; }
+        .menu-item.active { background: #55acee; color: white; transform: scale(1.05); }
 
-        #controls { position: absolute; bottom: 30px; width: 100%; text-align: center; display: flex; justify-content: center; gap: 15px; z-index: 10; }
-        .btn { border: none; padding: 15px 25px; border-radius: 30px; cursor: pointer; font-weight: bold; font-family: 'Courier New'; transition: 0.3s; pointer-events: auto; }
-        #plant-btn { background: #4CAF50; color: white; box-shadow: 0 4px #2e7d32; min-width: 220px; }
-        #plant-btn:disabled { background: #ccc; box-shadow: 0 4px #999; opacity: 0.7; }
+        #controls { bottom: 25px; display: flex; justify-content: center; gap: 10px; }
+        .btn { border: none; padding: 12px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; font-family: 'Courier New'; }
+        #plant-btn { background: #4CAF50; color: white; box-shadow: 0 4px #2e7d32; min-width: 200px; }
         #reset-btn { background: #e74c3c; color: white; box-shadow: 0 4px #c0392b; }
-        
-        #back-btn { position: absolute; top: 20px; left: 20px; text-decoration: none; color: #005f87; font-size: 14px; font-weight: bold; background: rgba(255,255,255,0.8); padding: 8px 15px; border-radius: 10px; z-index: 10; border: 1px solid #55acee; }
+        #back-btn { position: absolute; top: 20px; left: 20px; text-decoration: none; color: #005f87; font-size: 12px; font-weight: bold; background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 8px; z-index: 10; border: 1px solid #55acee; }
     </style>
 </head>
 <body>
@@ -65,7 +61,6 @@ let notes = parseInt(localStorage.getItem('notes_collected') || 0);
 let gardenItems = JSON.parse(localStorage.getItem('zen_garden_items') || '[]');
 let currentSelection = 'flower';
 let currentPrice = 50;
-let time = 0; // Goes from 0 to 1
 
 function selectItem(type, price) {
     currentSelection = type;
@@ -81,17 +76,6 @@ function updateUI() {
     const btn = document.getElementById('plant-btn');
     btn.innerText = `PLANT ${currentSelection.toUpperCase()} (${currentPrice} ♪)`;
     btn.disabled = (notes < currentPrice);
-    
-    // Toggle UI Styles
-    const bar = document.getElementById('stat-bar');
-    const items = document.querySelectorAll('.menu-item');
-    if (time > 0.5) {
-        bar.classList.add('night-ui');
-        items.forEach(i => i.classList.add('night-item'));
-    } else {
-        bar.classList.remove('night-ui');
-        items.forEach(i => i.classList.remove('night-item'));
-    }
 }
 
 function plantItem() {
@@ -104,10 +88,10 @@ function plantItem() {
         gardenItems.push({
             type: currentSelection,
             x: xPos, y: yBase, size: 0,
-            maxSize: currentSelection === 'tree' ? 50 + Math.random()*30 : 15 + Math.random()*15,
-            color: currentSelection === 'flower' ? `hsl(${Math.random() * 360}, 85%, 65%)` : (currentSelection === 'tree' ? '#2ecc71' : '#95a5a6'),
+            maxSize: currentSelection === 'tree' ? 50 + Math.random()*20 : 12 + Math.random()*10,
+            color: currentSelection === 'flower' ? `hsl(${Math.random() * 360}, 80%, 60%)` : (currentSelection === 'tree' ? '#2d5a27' : '#777'),
             phase: Math.random() * Math.PI * 2,
-            trunkHeight: currentSelection === 'tree' ? 80 + Math.random()*60 : 20
+            trunkH: 100 + Math.random() * 80 // Much taller
         });
         save(); updateUI();
     }
@@ -117,74 +101,73 @@ function resetGarden() { if (confirm("Reset garden?")) { gardenItems = []; local
 function save() { localStorage.setItem('notes_collected', notes); localStorage.setItem('zen_garden_items', JSON.stringify(gardenItems)); }
 
 function draw() {
-    // Cycle Time (Slowly loops from 0 to 1 every ~2 minutes)
-    time = (Math.sin(Date.now() * 0.0001) + 1) / 2; 
-
-    // 1. Sky Color Transition
-    const daySky = ['#55acee', '#ffffff'];
-    const nightSky = ['#0a0a2e', '#1a1a40'];
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    
-    const r1 = Math.floor(85 + (10 - 85) * time);
-    const g1 = Math.floor(172 + (10 - 172) * time);
-    const b1 = Math.floor(238 + (46 - 238) * time);
-    skyGrad.addColorStop(0, `rgb(${r1},${g1},${b1})`);
-    skyGrad.addColorStop(1, time > 0.5 ? '#1a1a40' : '#ffffff');
-    ctx.fillStyle = skyGrad;
+    // Optimization: Use solid color or simple gradient
+    ctx.fillStyle = "#87CEEB"; 
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Celestial Body (Sun/Moon)
-    const cx = canvas.width/2 + Math.cos(Date.now()*0.0001) * (canvas.width/3);
-    const cy = canvas.height/3 + Math.sin(Date.now()*0.0001) * 100;
-    ctx.fillStyle = time < 0.5 ? "#FFD700" : "#EEE";
-    ctx.shadowBlur = 20; ctx.shadowColor = ctx.fillStyle;
-    ctx.beginPath(); ctx.arc(cx, cy, 30, 0, Math.PI*2); ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // 3. Grass Hill (Darkens at night)
-    ctx.fillStyle = time > 0.5 ? "#1b4d1b" : "#4CAF50";
+    // Hill
+    ctx.fillStyle = "#3d8c40";
     ctx.beginPath(); ctx.moveTo(0, canvas.height);
     ctx.quadraticCurveTo(canvas.width/2, canvas.height - 250, canvas.width, canvas.height);
     ctx.lineTo(canvas.width, canvas.height); ctx.lineTo(0, canvas.height); ctx.fill();
 
-    // 4. Garden Items
+    const now = Date.now();
+
     gardenItems.forEach(f => {
         if (f.size < f.maxSize) f.size += 0.2;
-        const sway = f.type === 'rock' ? 0 : Math.sin(Date.now() * 0.0012 + f.phase) * (f.type === 'tree' ? 20 : 8);
-
-        if (time > 0.6) { ctx.shadowBlur = 10; ctx.shadowColor = f.color; } else { ctx.shadowBlur = 0; }
+        const sway = f.type === 'rock' ? 0 : Math.sin(now * 0.001 + f.phase) * (f.type === 'tree' ? 12 : 6);
 
         if (f.type === 'flower') {
-            ctx.strokeStyle = time > 0.5 ? "#143a18" : "#2e7d32"; ctx.lineWidth = 3;
+            ctx.strokeStyle = "#1a4a1d"; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(f.x, f.y + 20); ctx.quadraticCurveTo(f.x + sway/2, f.y + 10, f.x + sway, f.y); ctx.stroke();
             ctx.fillStyle = f.color;
-            for(let i=0; i<6; i++) {
-                const a = (i/6)*Math.PI*2;
-                ctx.beginPath(); ctx.arc(f.x+sway+Math.cos(a)*(f.size*0.7), f.y+Math.sin(a)*(f.size*0.7), f.size/1.8, 0, Math.PI*2); ctx.fill();
+            for(let i=0; i<5; i++) {
+                const a = (i/5)*Math.PI*2;
+                ctx.beginPath(); ctx.arc(f.x+sway+Math.cos(a)*f.size, f.y+Math.sin(a)*f.size, f.size/1.5, 0, Math.PI*2); ctx.fill();
             }
-            ctx.fillStyle = "#FFD700"; ctx.beginPath(); ctx.arc(f.x+sway, f.y, f.size/2.5, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#FFD700"; ctx.beginPath(); ctx.arc(f.x+sway, f.y, f.size/2, 0, Math.PI*2); ctx.fill();
         } 
         else if (f.type === 'tree') {
-            ctx.fillStyle = time > 0.5 ? "#3e2723" : "#5d4037";
-            const currentTrunkH = (f.size / f.maxSize) * f.trunkHeight;
-            ctx.beginPath(); ctx.moveTo(f.x - 4, f.y + 20); ctx.lineTo(f.x + sway - 2, f.y - currentTrunkH); ctx.lineTo(f.x + sway + 2, f.y - currentTrunkH); ctx.lineTo(f.x + 4, f.y + 20); ctx.fill();
+            const growth = f.size / f.maxSize;
+            const th = f.trunkH * growth;
+            
+            // Real-look tapered trunk
+            ctx.fillStyle = "#4a3728";
+            ctx.beginPath();
+            ctx.moveTo(f.x - 8, f.y + 30); // Base
+            ctx.quadraticCurveTo(f.x, f.y - th/2, f.x + sway, f.y - th); // Tapered top
+            ctx.lineTo(f.x + sway + 2, f.y - th);
+            ctx.quadraticCurveTo(f.x + 8, f.y - th/2, f.x + 8, f.y + 30);
+            ctx.fill();
+
+            // Branches
+            ctx.strokeStyle = "#4a3728"; ctx.lineWidth = 3 * growth;
+            ctx.beginPath();
+            ctx.moveTo(f.x + sway, f.y - th + 20);
+            ctx.lineTo(f.x + sway - 20, f.y - th - 10);
+            ctx.moveTo(f.x + sway, f.y - th + 30);
+            ctx.lineTo(f.x + sway + 20, f.y - th - 5);
+            ctx.stroke();
+
+            // Foliage (Leaves)
             ctx.fillStyle = f.color;
-            const leafyY = f.y - currentTrunkH;
-            ctx.beginPath(); ctx.arc(f.x + sway, leafyY, f.size, 0, Math.PI*2);
-            ctx.arc(f.x + sway - f.size/1.5, leafyY - f.size/2, f.size*0.7, 0, Math.PI*2);
-            ctx.arc(f.x + sway + f.size/1.5, leafyY - f.size/2, f.size*0.7, 0, Math.PI*2); ctx.fill();
+            const ly = f.y - th;
+            ctx.beginPath(); 
+            ctx.arc(f.x + sway, ly, f.size, 0, Math.PI*2);
+            ctx.arc(f.x + sway - 20, ly - 10, f.size * 0.8, 0, Math.PI*2);
+            ctx.arc(f.x + sway + 20, ly - 10, f.size * 0.8, 0, Math.PI*2);
+            ctx.arc(f.x + sway, ly - 25, f.size * 0.9, 0, Math.PI*2);
+            ctx.fill();
         }
         else if (f.type === 'rock') {
-            ctx.fillStyle = time > 0.5 ? "#444" : f.color;
-            ctx.beginPath(); ctx.ellipse(f.x, f.y + 25, f.size, f.size/1.5, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#666";
+            ctx.beginPath(); ctx.ellipse(f.x, f.y + 30, f.size*1.5, f.size, 0, 0, Math.PI*2); ctx.fill();
         }
-        ctx.shadowBlur = 0;
     });
 
     requestAnimationFrame(draw);
 }
 
-setInterval(updateUI, 1000); // Check time for UI updates
 updateUI(); draw();
 </script>
 </body>
