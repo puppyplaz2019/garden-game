@@ -2,226 +2,152 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sanco's Zen Garden</title>
+    <title>Sanco's Zen Garden: Expansion</title>
     <style>
-        body { 
-            margin: 0; 
-            background: linear-gradient(#87CEEB, #fff); 
-            height: 100vh;
-            overflow: hidden; 
-            font-family: 'Courier New', monospace;
+        body { margin: 0; background: #87CEEB; font-family: 'Courier New', monospace; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+        
+        #stats-bar { background: white; padding: 10px 30px; border-radius: 0 0 20px 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-weight: bold; z-index: 10; border: 2px solid #d4af37; }
+        
+        #garden-canvas { position: relative; width: 100vw; height: 100vh; background: #458B00; cursor: crosshair; }
+        
+        #ui-panel { position: absolute; bottom: 30px; display: flex; gap: 15px; z-index: 100; }
+        .tool-btn { padding: 12px 20px; border-radius: 12px; border: 3px solid white; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
+        .tool-btn:active { transform: translateY(4px); box-shadow: none; }
+        
+        /* Item Styles */
+        .placed-item { position: absolute; transform: translate(-50%, -100%); transition: transform 0.2s; cursor: pointer; user-select: none; }
+        .placed-item:hover { filter: brightness(1.2); transform: translate(-50%, -105%) scale(1.1); }
+        
+        /* Pond Special Animation */
+        .pond { 
+            width: 120px; height: 70px; background: #1E90FF; border-radius: 50%; 
+            border: 4px solid #4682B4; box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+            animation: ripple 3s infinite;
         }
-        
-        /* Grassy Field Background */
-        .grass {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 240px;
-            background: #3d8c40;
-            border-top: 8px solid #2d6a30;
-            z-index: 1;
-        }
+        @keyframes ripple { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
-        canvas { position: absolute; top: 0; left: 0; z-index: 2; cursor: crosshair; }
-        
-        #ui, #menu, #controls { position: absolute; width: 100%; text-align: center; z-index: 10; }
-        #ui { top: 20px; pointer-events: none; }
-        .stats { background: white; padding: 10px; border-radius: 15px; border: 2px solid #55acee; display: inline-block; font-weight: bold; }
-        
-        #menu { bottom: 100px; display: flex; justify-content: center; gap: 8px; }
-        .menu-item { background: white; border: 2px solid #55acee; padding: 8px; border-radius: 10px; cursor: pointer; font-size: 12px; }
-        .menu-item.active { background: #55acee; color: white; transform: scale(1.1); }
-
-        #controls { bottom: 25px; display: flex; justify-content: center; gap: 10px; }
-        .btn { border: none; padding: 12px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; }
-        #plant-btn { background: #4CAF50; color: white; min-width: 180px; box-shadow: 0 4px #2e7d32; }
-        #plant-btn:disabled { background: #666; box-shadow: none; cursor: not-allowed; }
-        #reset-btn { background: #e74c3c; color: white; box-shadow: 0 4px #c0392b; }
-        
-        #hint { position: absolute; top: 80px; width: 100%; text-align: center; font-size: 11px; color: #005f87; z-index: 5; font-weight: bold; }
-        #back-btn { position: absolute; top: 20px; left: 20px; text-decoration: none; color: #005f87; font-size: 12px; font-weight: bold; background: white; padding: 5px 10px; border-radius: 8px; z-index: 15; border: 1px solid #55acee; }
+        #reset-btn { position: absolute; bottom: 30px; right: 30px; background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        #exit-btn { position: absolute; top: 20px; left: 20px; background: white; border: 1px solid #ccc; padding: 5px 15px; border-radius: 5px; text-decoration: none; color: #333; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<a href="https://puppyplaz2019.github.io/Arcade-HUB/" id="back-btn">← EXIT</a>
-<div class="grass"></div>
-<div id="hint">CLICK AN OBJECT TO REMOVE IT</div>
+    <a id="exit-btn" href="https://puppyplaz2019.github.io/Arcade-HUB/">← EXIT</a>
 
-<div id="ui">
-    <div class="stats">
-        NOTES: <span id="note-count">0</span> ♪ | <span id="item-count">0</span>/50 ITEMS
+    <div id="stats-bar">
+        NOTES: <span id="notes-display">0</span> ♪ | <span id="count-display">0</span>/100 ITEMS
     </div>
-</div>
 
-<div id="menu">
-    <div class="menu-item active" id="sel-flower" onclick="selectItem('flower', 50)">🌸 FLOWER (50)</div>
-    <div class="menu-item" id="sel-tree" onclick="selectItem('tree', 100)">🌳 TREE (100)</div>
-    <div class="menu-item" id="sel-rock" onclick="selectItem('rock', 25)">🪨 ROCK (25)</div>
-</div>
+    <div id="garden-canvas" onclick="placeItem(event)">
+        </div>
 
-<div id="controls">
-    <button class="btn" id="plant-btn" onclick="plantItem()">PLANT SELECTED</button>
-    <button class="btn" id="reset-btn" onclick="resetGarden()">RESET ALL</button>
-</div>
+    <div id="ui-panel">
+        <div class="tool-btn" style="background:#ff69b4;" onclick="setTool('flower', 50, event)">🌸 FLOWER (50)</div>
+        <div class="tool-btn" style="background:#2ecc71;" onclick="setTool('tree', 100, event)">🌳 TREE (100)</div>
+        <div class="tool-btn" style="background:#95a5a6;" onclick="setTool('rock', 25, event)">🪨 ROCK (25)</div>
+        <div class="tool-btn" style="background:#1E90FF;" onclick="setTool('pond', 500, event)">💧 POND (500)</div>
+    </div>
 
-<script>
-const canvas = document.createElement('canvas');
-const ctx = canvas.getContext('2d');
-document.body.appendChild(canvas);
+    <button id="reset-btn" onclick="resetGarden()">RESET ALL</button>
 
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
+    <script>
+        let notes = parseInt(localStorage.getItem('notes_collected') || 0);
+        let items = JSON.parse(localStorage.getItem('garden_save') || "[]");
+        let currentTool = 'flower';
+        let currentCost = 50;
 
-// Load data
-let notes = parseInt(localStorage.getItem('notes_collected') || 0);
-let gardenItems = JSON.parse(localStorage.getItem('zen_garden_items') || '[]');
-let currentSelection = 'flower';
-let currentPrice = 50;
-
-function selectItem(type, price) {
-    currentSelection = type;
-    currentPrice = price;
-    document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-    document.getElementById('sel-' + type).classList.add('active');
-    updateUI();
-}
-
-function updateUI() {
-    document.getElementById('note-count').innerText = notes;
-    document.getElementById('item-count').innerText = gardenItems.length;
-    const btn = document.getElementById('plant-btn');
-    
-    // Upped the limit to 50 items
-    if (gardenItems.length >= 50) {
-        btn.innerText = "GARDEN FULL (50/50)";
-        btn.disabled = true;
-    } else {
-        btn.innerText = `PLANT ${currentSelection.toUpperCase()} (${currentPrice})`;
-        btn.disabled = (notes < currentPrice);
-    }
-}
-
-// Check for collisions (Reduced padding to 15 for more space)
-function isSpaceOccupied(x, y) {
-    return gardenItems.some(item => {
-        const dx = x - item.x;
-        const dy = y - item.y;
-        const distance = Math.sqrt(dx*dx + dy*dy);
-        return distance < 35; 
-    });
-}
-
-function plantItem() {
-    if (notes < currentPrice || gardenItems.length >= 50) return;
-
-    let foundSpot = false;
-    let x, y;
-    let attempts = 0;
-
-    // Try 200 times to find a gap
-    while (!foundSpot && attempts < 200) {
-        x = 60 + Math.random() * (canvas.width - 120);
-        y = canvas.height - 210 + Math.random() * 160; 
-        if (!isSpaceOccupied(x, y)) {
-            foundSpot = true;
+        function updateDisplay() {
+            document.getElementById('notes-display').innerText = notes.toLocaleString();
+            document.getElementById('count-display').innerText = items.length;
+            localStorage.setItem('notes_collected', notes);
+            localStorage.setItem('garden_save', JSON.stringify(items));
         }
-        attempts++;
-    }
 
-    if (foundSpot) {
-        notes -= currentPrice;
-        gardenItems.push({
-            id: Date.now(),
-            type: currentSelection,
-            x: x, y: y, size: 0,
-            maxSize: currentSelection === 'tree' ? 45 : 12,
-            color: currentSelection === 'flower' ? `hsl(${Math.random()*360},80%,60%)` : (currentSelection === 'tree' ? '#2d5a27' : '#777'),
-            trunkH: 150 + Math.random() * 100
-        });
-        save(); updateUI();
-    } else {
-        alert("No space left! Try removing an item.");
-    }
-}
+        function setTool(type, cost, e) {
+            e.stopPropagation();
+            currentTool = type;
+            currentCost = cost;
+        }
 
-// Click to remove logic
-canvas.addEventListener('mousedown', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const initialLength = gardenItems.length;
-    gardenItems = gardenItems.filter(item => {
-        const dx = mouseX - item.x;
-        const dy = mouseY - item.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        // Special check for tree trunks/leaves
-        const hitTree = (item.type === 'tree' && Math.abs(mouseX - item.x) < 25 && mouseY < item.y && mouseY > item.y - item.trunkH - 50);
-        return dist > 35 && !hitTree;
-    });
-
-    if (gardenItems.length !== initialLength) {
-        save();
-        updateUI();
-    }
-});
-
-function resetGarden() { if (confirm("Clear all items?")) { gardenItems = []; localStorage.removeItem('zen_garden_items'); updateUI(); } }
-function save() { localStorage.setItem('notes_collected', notes); localStorage.setItem('zen_garden_items', JSON.stringify(gardenItems)); }
-
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Sort by Y so things in "back" are drawn behind things in "front"
-    gardenItems.sort((a, b) => a.y - b.y);
-
-    gardenItems.forEach(f => {
-        if (f.size < f.maxSize) f.size += 0.5;
-        const sway = f.type === 'rock' ? 0 : Math.sin(Date.now() * 0.001 + (f.x)) * (f.type === 'tree' ? 10 : 5);
-
-        if (f.type === 'flower') {
-            ctx.strokeStyle = "#1a4a1d"; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(f.x, f.y + 15); ctx.lineTo(f.x + sway, f.y); ctx.stroke();
-            ctx.fillStyle = f.color;
-            for(let i=0; i<5; i++) {
-                const a = (i/5)*Math.PI*2;
-                ctx.beginPath(); ctx.arc(f.x+sway+Math.cos(a)*f.size, f.y+Math.sin(a)*f.size, f.size/1.5, 0, Math.PI*2); ctx.fill();
+        function placeItem(e) {
+            if (items.length >= 100) {
+                alert("Garden is full! 100/100 items.");
+                return;
             }
-        } 
-        else if (f.type === 'tree') {
-            const th = f.trunkH * (f.size / f.maxSize);
-            ctx.fillStyle = "#4a3728";
-            ctx.beginPath();
-            ctx.moveTo(f.x - 7, f.y + 20); 
-            ctx.lineTo(f.x + sway, f.y - th); 
-            ctx.lineTo(f.x + sway + 5, f.y - th);
-            ctx.lineTo(f.x + 7, f.y + 20);
-            ctx.fill();
+            if (notes < currentCost) {
+                alert("Not enough ♪ notes!");
+                return;
+            }
 
-            ctx.fillStyle = f.color;
-            ctx.beginPath(); 
-            ctx.arc(f.x + sway, f.y - th, f.size, 0, Math.PI*2);
-            ctx.arc(f.x + sway - 20, f.y - th - 10, f.size * 0.7, 0, Math.PI*2);
-            ctx.arc(f.x + sway + 20, f.y - th - 10, f.size * 0.7, 0, Math.PI*2);
-            ctx.fill();
+            const x = (e.clientX / window.innerWidth) * 100;
+            const y = (e.clientY / window.innerHeight) * 100;
+            
+            const newItem = { type: currentTool, x: x, y: y, id: Date.now() };
+            
+            // Randomize flowers
+            if (currentTool === 'flower') {
+                const colors = ['#FF69B4', '#FFD700', '#9370DB', '#00FFFF', '#FF4500'];
+                newItem.color = colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            notes -= currentCost;
+            items.push(newItem);
+            renderItem(newItem);
+            updateDisplay();
         }
-        else if (f.type === 'rock') {
-            ctx.fillStyle = "#666";
-            ctx.beginPath(); ctx.ellipse(f.x, f.y + 15, f.size*1.6, f.size, 0, 0, Math.PI*2); ctx.fill();
+
+        function renderItem(data) {
+            const el = document.createElement('div');
+            el.className = 'placed-item';
+            el.style.left = data.x + "%";
+            el.style.top = data.y + "%";
+            el.id = "item-" + data.id;
+            
+            // Delete item on click
+            el.onclick = (e) => {
+                e.stopPropagation();
+                removeItem(data.id);
+            };
+
+            if (data.type === 'flower') {
+                el.innerHTML = `<svg width="40" height="40" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="20" fill="yellow"/>
+                    <circle cx="50" cy="20" r="20" fill="${data.color}"/>
+                    <circle cx="80" cy="50" r="20" fill="${data.color}"/>
+                    <circle cx="50" cy="80" r="20" fill="${data.color}"/>
+                    <circle cx="20" cy="50" r="20" fill="${data.color}"/>
+                </svg>`;
+            } else if (data.type === 'tree') {
+                const height = 60 + Math.random() * 40;
+                el.innerHTML = `<div style="width:10px; height:${height}px; background:#5D4037; margin:0 auto;"></div>
+                                <div style="width:60px; height:60px; background:#2D5A27; border-radius:50%; margin-top:-${height+20}px;"></div>`;
+            } else if (data.type === 'rock') {
+                el.innerHTML = `<div style="width:40px; height:25px; background:#7f8c8d; border-radius:40% 50% 30% 40%;"></div>`;
+            } else if (data.type === 'pond') {
+                el.className += ' pond';
+                el.style.transform = "translate(-50%, -50%)"; // Ponds sit flat
+            }
+
+            document.getElementById('garden-canvas').appendChild(el);
         }
-    });
 
-    requestAnimationFrame(draw);
-}
+        function removeItem(id) {
+            items = items.filter(i => i.id !== id);
+            document.getElementById('item-' + id).remove();
+            updateDisplay();
+        }
 
-updateUI(); draw();
-</script>
+        function resetGarden() {
+            if(confirm("Clear your masterpiece and start over?")) {
+                items = [];
+                document.getElementById('garden-canvas').innerHTML = "";
+                updateDisplay();
+            }
+        }
+
+        // Initial Load
+        items.forEach(renderItem);
+        updateDisplay();
+    </script>
 </body>
 </html>
