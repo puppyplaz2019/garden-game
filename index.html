@@ -2,32 +2,35 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sanco's Zen Garden: Expansion</title>
+    <title>Sanco's Zen Garden: Wildlife Edition</title>
     <style>
         body { margin: 0; background: #87CEEB; font-family: 'Courier New', monospace; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
         
-        #stats-bar { background: white; padding: 10px 30px; border-radius: 0 0 20px 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-weight: bold; z-index: 10; border: 2px solid #d4af37; }
+        #stats-bar { background: white; padding: 10px 30px; border-radius: 0 0 20px 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-weight: bold; z-index: 1000; border: 2px solid #d4af37; position: relative; }
         
-        #garden-canvas { position: relative; width: 100vw; height: 100vh; background: #458B00; cursor: crosshair; }
+        #garden-canvas { position: relative; width: 100vw; height: 100vh; background: #458B00; cursor: crosshair; overflow: hidden; }
         
-        #ui-panel { position: absolute; bottom: 30px; display: flex; gap: 15px; z-index: 100; }
-        .tool-btn { padding: 12px 20px; border-radius: 12px; border: 3px solid white; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
+        #ui-panel { position: absolute; bottom: 30px; display: flex; gap: 15px; z-index: 1000; }
+        .tool-btn { padding: 12px 20px; border-radius: 12px; border: 3px solid white; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; box-shadow: 0 4px 0 rgba(0,0,0,0.2); user-select: none; }
         .tool-btn:active { transform: translateY(4px); box-shadow: none; }
         
         /* Item Styles */
         .placed-item { position: absolute; transform: translate(-50%, -100%); transition: transform 0.2s; cursor: pointer; user-select: none; }
-        .placed-item:hover { filter: brightness(1.2); transform: translate(-50%, -105%) scale(1.1); }
+        .placed-item:hover { filter: brightness(1.2); }
         
-        /* Pond Special Animation */
+        /* Pond Special Style */
         .pond { 
-            width: 120px; height: 70px; background: #1E90FF; border-radius: 50%; 
-            border: 4px solid #4682B4; box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
-            animation: ripple 3s infinite;
+            width: 140px; height: 80px; background: #1E90FF; border-radius: 50%; 
+            border: 4px solid #4682B4; box-shadow: inset 0 0 25px rgba(0,0,0,0.3);
+            animation: ripple 4s infinite ease-in-out;
         }
-        @keyframes ripple { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        @keyframes ripple { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.05); } }
 
-        #reset-btn { position: absolute; bottom: 30px; right: 30px; background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        #exit-btn { position: absolute; top: 20px; left: 20px; background: white; border: 1px solid #ccc; padding: 5px 15px; border-radius: 5px; text-decoration: none; color: #333; font-weight: bold; }
+        /* Wildlife Styles */
+        .wildlife { position: absolute; z-index: 999; pointer-events: none; font-size: 24px; transition: all 3s linear; }
+
+        #reset-btn { position: absolute; bottom: 30px; right: 30px; background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; z-index: 1000; }
+        #exit-btn { position: absolute; top: 20px; left: 20px; background: white; border: 1px solid #ccc; padding: 5px 15px; border-radius: 5px; text-decoration: none; color: #333; font-weight: bold; z-index: 1000; }
     </style>
 </head>
 <body>
@@ -56,6 +59,8 @@
         let currentTool = 'flower';
         let currentCost = 50;
 
+        const canvas = document.getElementById('garden-canvas');
+
         function updateDisplay() {
             document.getElementById('notes-display').innerText = notes.toLocaleString();
             document.getElementById('count-display').innerText = items.length;
@@ -70,21 +75,14 @@
         }
 
         function placeItem(e) {
-            if (items.length >= 100) {
-                alert("Garden is full! 100/100 items.");
-                return;
-            }
-            if (notes < currentCost) {
-                alert("Not enough ♪ notes!");
-                return;
-            }
+            if (items.length >= 100) return alert("Garden is full!");
+            if (notes < currentCost) return alert("Not enough ♪ notes!");
 
             const x = (e.clientX / window.innerWidth) * 100;
             const y = (e.clientY / window.innerHeight) * 100;
             
             const newItem = { type: currentTool, x: x, y: y, id: Date.now() };
             
-            // Randomize flowers
             if (currentTool === 'flower') {
                 const colors = ['#FF69B4', '#FFD700', '#9370DB', '#00FFFF', '#FF4500'];
                 newItem.color = colors[Math.floor(Math.random() * colors.length)];
@@ -103,7 +101,10 @@
             el.style.top = data.y + "%";
             el.id = "item-" + data.id;
             
-            // Delete item on click
+            // AUTOMATIC OVERLAPPING (Z-INDEX)
+            // Lower on screen = Higher Z-index
+            el.style.zIndex = Math.floor(data.y * 10);
+
             el.onclick = (e) => {
                 e.stopPropagation();
                 removeItem(data.id);
@@ -111,43 +112,80 @@
 
             if (data.type === 'flower') {
                 el.innerHTML = `<svg width="40" height="40" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="20" fill="yellow"/>
-                    <circle cx="50" cy="20" r="20" fill="${data.color}"/>
-                    <circle cx="80" cy="50" r="20" fill="${data.color}"/>
-                    <circle cx="50" cy="80" r="20" fill="${data.color}"/>
-                    <circle cx="20" cy="50" r="20" fill="${data.color}"/>
+                    <circle cx="50" cy="50" r="15" fill="yellow"/>
+                    <circle cx="50" cy="25" r="20" fill="${data.color}"/>
+                    <circle cx="75" cy="50" r="20" fill="${data.color}"/>
+                    <circle cx="50" cy="75" r="20" fill="${data.color}"/>
+                    <circle cx="25" cy="50" r="20" fill="${data.color}"/>
                 </svg>`;
             } else if (data.type === 'tree') {
-                const height = 60 + Math.random() * 40;
-                el.innerHTML = `<div style="width:10px; height:${height}px; background:#5D4037; margin:0 auto;"></div>
-                                <div style="width:60px; height:60px; background:#2D5A27; border-radius:50%; margin-top:-${height+20}px;"></div>`;
+                const height = 70 + (data.id % 50); 
+                el.innerHTML = `
+                    <div style="width:12px; height:${height}px; background:#5D4037; margin:0 auto; box-shadow: 2px 0 5px rgba(0,0,0,0.3);"></div>
+                    <div style="width:80px; height:80px; background:#2D5A27; border-radius:50%; margin-top:-${height+30}px; box-shadow: inset -10px -10px 20px rgba(0,0,0,0.4);"></div>`;
             } else if (data.type === 'rock') {
-                el.innerHTML = `<div style="width:40px; height:25px; background:#7f8c8d; border-radius:40% 50% 30% 40%;"></div>`;
+                el.innerHTML = `<div style="width:50px; height:35px; background:#7f8c8d; border-radius:40% 60% 30% 50%; box-shadow: inset -5px -5px 10px rgba(0,0,0,0.5);"></div>`;
             } else if (data.type === 'pond') {
                 el.className += ' pond';
-                el.style.transform = "translate(-50%, -50%)"; // Ponds sit flat
+                el.style.zIndex = Math.floor(data.y * 10) - 2; // Keep pond slightly behind items at same Y
             }
 
-            document.getElementById('garden-canvas').appendChild(el);
+            canvas.appendChild(el);
         }
 
         function removeItem(id) {
             items = items.filter(i => i.id !== id);
-            document.getElementById('item-' + id).remove();
+            const el = document.getElementById('item-' + id);
+            if(el) el.remove();
             updateDisplay();
         }
 
         function resetGarden() {
-            if(confirm("Clear your masterpiece and start over?")) {
+            if(confirm("Wipe the garden clean?")) {
                 items = [];
-                document.getElementById('garden-canvas').innerHTML = "";
+                canvas.innerHTML = "";
                 updateDisplay();
             }
+        }
+
+        // --- WILDLIFE SYSTEM ---
+        function spawnWildlife() {
+            const hasPond = items.some(i => i.type === 'pond');
+            const hasFlowers = items.filter(i => i.type === 'flower').length > 4;
+
+            if (hasPond && Math.random() > 0.7) {
+                createAnimal('🦆'); // Duck
+            } else if (hasFlowers && Math.random() > 0.5) {
+                createAnimal('🦋'); // Butterfly
+            }
+        }
+
+        function createAnimal(emoji) {
+            const ani = document.createElement('div');
+            ani.className = 'wildlife';
+            ani.innerText = emoji;
+            
+            let startX = Math.random() * 100;
+            let startY = Math.random() * 100;
+            
+            ani.style.left = startX + "%";
+            ani.style.top = startY + "%";
+            canvas.appendChild(ani);
+
+            // Move after short delay
+            setTimeout(() => {
+                ani.style.left = Math.random() * 100 + "%";
+                ani.style.top = Math.random() * 100 + "%";
+            }, 100);
+
+            // Remove after 10 seconds
+            setTimeout(() => ani.remove(), 10000);
         }
 
         // Initial Load
         items.forEach(renderItem);
         updateDisplay();
+        setInterval(spawnWildlife, 5000);
     </script>
 </body>
 </html>
